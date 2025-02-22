@@ -11,6 +11,14 @@ const PORT = process.env.PORT || 5000;
 // 미들웨어 설정
 app.use(cors());
 app.use(bodyParser.json());
+app.use(express.json());
+
+
+// 기본 라우트
+app.get('/', (req, res) => {
+  res.send('Backend Server Running');
+});
+
 
 // // 정적 파일 제공 설정
 // app.use(express.static(path.join(__dirname, '../frontend')));
@@ -20,8 +28,10 @@ app.use(bodyParser.json());
 //   res.sendFile(path.join(__dirname, '../frontend', 'main.html'));
 // });
 
-// //라우팅
-// const memberRouter = require('./routes/member'); //member라우터 가져오기
+
+// 라우터 등록
+// const memberR
+// outer = require('./routes/member'); //member라우터 가져오기
 // const userRouter = require('./routes/user'); //user라우터 가져오기
 // const taskRouter = require('./routes/task');
 // const groupRouter = require('./routes/group');
@@ -42,10 +52,10 @@ mongoose
   .catch((err) => console.log('DB Connection Error:', err));
 
   
-// 기본 라우트
-app.get('/', (req, res) => {
-  res.send('Backend Server Running');
-});
+
+//라우팅 - 로그인
+const authRouter = require("./routes/auth");
+app.use("/api", authRouter);
 
 // 서버 실행
 app.listen(PORT, () => {
@@ -54,7 +64,6 @@ app.listen(PORT, () => {
 
 //로그인 엔드포인트
 //app.post()
-
 
 require('dotenv').config({ path: __dirname + '/.env' });
 
