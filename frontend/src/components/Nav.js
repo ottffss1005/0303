@@ -21,11 +21,12 @@ function Nav() {
       </Link>
       <Link className={styles.nav_text} to={"/Settings"}>
         <img
-          src={settingsIcon} alt="settings icon" className={styles.nav_icon}
+          src={settingsIcon}
+          alt="settings icon"
+          className={styles.nav_icon}
         />
         환경설정
       </Link>
-      <button className={styles.logout_button}>로그아웃</button>
     </div>
   );
 }
