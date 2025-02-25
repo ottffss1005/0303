@@ -6,7 +6,7 @@ import Home from "./pages/Home/Home";
 import Main from "./pages/Main/Main";
 import Mypage from "./pages/Mypage/Mypage";
 import Settings from "./pages/Settings/Settings";
-import Layout from "./layout/LoginLayout";
+import Layout from "./layout/layout";
 
 function App() {
   return (

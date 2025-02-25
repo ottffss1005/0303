@@ -1,0 +1,33 @@
+.layout {
+  display: grid;
+  grid-template-columns: 1px 150px;
+  grid-template-rows: 2fr 1fr;
+  height: 100vh;
+}
+
+.history {
+  grid-column-start: 2;
+  grid-column-end: 3;
+  grid-row-start: 1;
+  grid-row-end: 3;
+  background-color: #f1f5f2;
+  padding: 1rem;
+}
+
+.input-window {
+  grid-column-start: 1;
+  grid-column-end: 2;
+  grid-row-start: 2;
+  grid-row-end: 3;
+  background-color: #f1f5f2;
+  padding: 1rem;
+}
+
+.chat-window {
+  grid-column-start: 1;
+  grid-column-end: 2;
+  grid-row-start: 1;
+  grid-row-end: 2;
+  background-color: #f1f5f2;
+  padding: 1rem;
+}
