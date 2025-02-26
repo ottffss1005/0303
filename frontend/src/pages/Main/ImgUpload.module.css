@@ -1,7 +1,7 @@
 .chatContainer {
     display: flex;
     flex-direction: column;
-    max-width: 600px;
+    max-width: 1500px;
     margin: auto;
   }
   
