@@ -1,0 +1,68 @@
+.bubbleContainer {
+    display: flex;
+    flex-direction: column; /* 세로 정렬 */
+    margin-bottom: 10px;
+  }
+  
+  .user {
+    align-items: flex-end; /* 사용자의 말풍선을 오른쪽 정렬 */
+  }
+  
+  .bot {
+    align-items: flex-start; /* AI 메시지는 왼쪽 정렬 */
+  }
+  
+  .botIcon {
+    width: 32px;
+    height: 32px;
+    background-color: #10a37f;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    color: white;
+    font-weight: bold;
+    margin-right: 10px;
+  }
+  
+  .bubble {
+    max-width: 80%;
+    padding: 10px;
+    border-radius: 10px;
+    word-break: break-word;
+    text-align: left;
+    display: inline-block;
+  }
+  
+  /* 사용자 말풍선 */
+  .userBubble {
+    background-color: #0F4C2E;
+    color: white;
+  }
+  
+  /* AI 말풍선 */
+  .botBubble {
+    background-color: #F1F5F2;
+    color: black;
+  }
+  
+  /* 이미지 스타일 */
+  .image {
+    width: auto;
+    max-width: 300px;
+    max-height: 300px;
+    border-radius: 5px;
+    object-fit: contain;
+    display: block;
+  }
+  
+  /* 사용자의 이미지 메시지를 오른쪽 정렬 */
+  .user .bubble {
+    text-align: right;
+  }
+  
+  .user .image {
+    align-self: flex-end;
+  }
+  

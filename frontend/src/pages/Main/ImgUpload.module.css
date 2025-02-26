@@ -1,0 +1,48 @@
+.chatContainer {
+    display: flex;
+    flex-direction: column;
+    max-width: 600px;
+    margin: auto;
+  }
+  
+  .chatWindow {
+    overflow-y: auto;
+    flex-direction: column;
+    align-items: flex-end;
+    justify-content: flex-end;
+    font-size: 16px;
+  }
+  
+  .placeholder {
+    display: flex;
+    align-items: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #777;
+  }
+  
+  .hiddenInput {
+    display: none;
+  }
+  
+  .inputContainer {
+    display: flex;
+    justify-content: flex-end;
+    padding: 10px;
+  }
+  
+  .uploadButton {
+    padding: 8px 14px;
+    font-size: 15px;
+    background-color: #0F4C2E;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: 0.2s;
+  }
+  
+  .uploadButton:hover {
+    background-color: #0B3A23;
+  }
+  
