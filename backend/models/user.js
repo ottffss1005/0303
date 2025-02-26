@@ -13,11 +13,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
         unique: true,
-        maxlength: 30
+        maxlength: 100
     },
     userEmail:{
         type:String,
-        required: true
+    //    required: true
     },
     snsApi:{
         type:Boolean,
