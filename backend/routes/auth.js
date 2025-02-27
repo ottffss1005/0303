@@ -93,5 +93,44 @@ router.get("/profile", authenticateToken, async (req, res) => {
     }
   });
 
+// 마이페이지 사용자 정보 수정 엔드포인트
+router.put("/profile", authenticateToken, async (req, res) => {
+    try {
+      // JWT를 통한 userId는 req.user에 저장
+      // (예: { userId: '사용자아이디' })
+      const currentUserId = req.user.userId;
+  
+      // 프런트엔드에서 수정할 데이터 받아오기
+      const { userEmail, snsApi, userPw } = req.body;
+      // 업데이트할 데이터 객체 생성
+      const updateData = { userEmail, snsApi };
+  
+      // 비밀번호를 수정하는 경우 해싱한 뒤뒤 updateData에 추가
+      if (userPw) {
+        const salt = await bcrypt.genSalt(10);
+        updateData.userPw = await bcrypt.hash(userPw, salt);
+      }
+  
+      // DB에서 해당 사용자를 찾아 업데이트 (new: true 옵션으로 업데이트 후 문서를 반환)
+      const updatedUser = await User.findOneAndUpdate(
+        { userId: currentUserId },
+        updateData,
+        { new: true }
+      ).select("-userPw"); // 응답에 비밀번호는 포함하지 않음
+  
+      if (!updatedUser) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      }
+  
+      res.status(200).json({
+        message: "회원 정보가 수정되었습니다.",
+        user: updatedUser
+      });
+    } catch (error) {
+      console.error("프로필 업데이트 오류:", error);
+      res.status(500).json({ message: "서버 오류 발생" });
+    }
+  });
+
 
 module.exports = router;
