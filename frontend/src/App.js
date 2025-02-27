@@ -8,6 +8,7 @@ import Mypage from "./pages/Mypage/Mypage";
 import Settings from "./pages/Settings/Settings";
 import Layout from "./layout/layout";
 import Login from "./pages/Login/Login";
+import Register from "./pages/Register/Register";
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/Mypage" element={<Mypage />} />
           <Route path="/Settings" element={<Settings />} />
           <Route path="/Login" element={<Login />} />
+          <Route path="/Register" element={<Register />} />
         </Routes>
       </Layout>
     </BrowserRouter>
