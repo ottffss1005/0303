@@ -2,6 +2,7 @@ const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const User = require("../models/user");
+const authenticateToken = require("../middleware/authenticateToken");
 
 const router = express.Router();
 
@@ -77,6 +78,20 @@ router.post("/register", async (req, res) => {
         res.status(500).json({ message: "서버 오류 발생" });
     }
 });
+
+// 마이페이지용 사용자 정보 조회 엔드포인트
+router.get("/profile", authenticateToken, async (req, res) => {
+    try {
+      // req.user는 jwt.verify에서 설정한 { userId: ... } 객체라고 가정
+      const user = await User.findOne({ userId: req.user.userId }).select("-userPw"); // 비밀번호 필드는 제외
+      if (!user) {
+        return res.status(404).json({ message: "사용자를 찾을 수 없습니다." });
+      }
+      res.status(200).json(user);
+    } catch (error) {
+      res.status(500).json({ message: "서버 오류 발생" });
+    }
+  });
 
 
 module.exports = router;
