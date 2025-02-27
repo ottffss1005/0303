@@ -4,6 +4,7 @@ import styles from "./Register.module.css";
 
 const Register = () => {
   const [userData, setUserData] = useState({
+    email: "",
     id: "",
     passwd: "",
     passwdCheck: "",
@@ -34,6 +35,7 @@ const Register = () => {
               className={styles.userId}
               id="userId"
               placeholder="아이디"
+              value={userData.id}
               autoFocus
             ></input>
             <input
@@ -41,12 +43,21 @@ const Register = () => {
               className={styles.password}
               id="userPassword"
               placeholder="비밀번호"
+              value={userData.passwd}
             ></input>
             <input
               type="password"
               className={styles.password}
               id="userPassword"
               placeholder="비밀번호 확인"
+              value={userData.passwdCheck}
+            ></input>
+            <input
+              type="text"
+              className={styles.userId}
+              id="Email"
+              placeholder="이메일"
+              value={userData.email}
             ></input>
             <button
               className={styles.registerBut}
