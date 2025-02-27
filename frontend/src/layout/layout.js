@@ -1,5 +1,5 @@
 import React from "react";
-import styles from "./layout.module.css";
+import styles from "./Layout.module.css";
 import SideMenu from "../components/Nav";
 
 const layout = ({ children }) => {
