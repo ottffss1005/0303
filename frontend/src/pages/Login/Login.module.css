@@ -1,0 +1,60 @@
+div h5 {
+  margin-bottom: 3px;
+  color: rgb(107, 107, 107);
+}
+
+.loginForm {
+  padding: 2rem;
+  width: 600px;
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  position: absolute;
+  border: 3px solid #0f4c2e;
+}
+
+.login_title {
+  margin-bottom: 50px; /* 로그인 글자와 아래 요소 간격 */
+}
+
+.input {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.userId,
+.password {
+  width: 300px;
+  height: 40px;
+  border: 1px solid #0f4c2e;
+  border-radius: 5px;
+  padding: 0 10px;
+  margin-bottom: 10px;
+}
+
+.loginBut {
+  background-color: #0f4c2e;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 17px;
+  height: 50px;
+  width: 300px;
+  margin: 20px 0 10px 0;
+}
+
+.loginBut:hover {
+  background-color: #0b3a23;
+}
+
+.link a {
+  text-decoration: none; /* 밑줄 제거 */
+  color: rgb(107, 107, 107); /* 색상 변경 */
+}
+
+.link a:hover {
+  background-color: gray;
+}
