@@ -3,10 +3,10 @@ const express = require("express");
 const router = express.Router();
 const Photo = require("../models/photo");
 const authenticateToken = require("../middleware/authenticateToken");
-const upload = require("../config/multer"); // multer
+const upload = require("../config/multer"); //multer
 
 
-// 사진 업로드
+//사진 업로드
 router.post("/photos", authenticateToken, upload.single("photo"), async (req, res) => {
   try {
     if (!req.file) {
@@ -19,10 +19,10 @@ router.post("/photos", authenticateToken, upload.single("photo"), async (req, re
     //DB 문서 생성
     const newPhoto = new Photo({
       photoId: photoId,
-      userId: req.user.userId,    // JWT에서 추출한 사용자 ID
+      userId: req.user.userId,    //JWT에서 추출한 사용자 ID
       snsApi: false,            
       uploadTime: new Date(),
-      photoUrl: `/uploads/${req.file.filename}`, // 실제 파일 경로
+      photoUrl: `/uploads/${req.file.filename}`, //실제 파일 경로
     });
 
     //저장
