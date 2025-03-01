@@ -1,30 +1,41 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import styles from "./Register.module.css";
+import { useAuth } from "../../hooks/useAuth";
 
 const Register = () => {
-  const [userData, setUserData] = useState({
-    email: "",
-    id: "",
-    passwd: "",
+  const { userSignup } = useAuth();
+  const [formData, setFormData] = useState({
+    userEmail: "",
+    userId: "",
+    userPw: "",
     passwdCheck: "",
   });
+  const [error, setError] = useState(""); // 에러 메시지 상태 추가
 
-  const handleInput = (e) => {
-    setUserData({
-      ...userData,
-      [e.target.name]: e.target.value,
-    });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
-  const { id, passwd, passwdCheck } = userData;
+  const handleSubmit = (e) => {
+    e.preventDefault();
 
-  const isSame = passwd === passwdCheck;
-  const isValid = id !== "" && isSame === true;
+    if (formData.userPw !== formData.passwdCheck) {
+      setError("비밀번호가 일치하지 않습니다.");
+      return;
+    }
+
+    setError("");
+    userSignup(formData);
+  };
 
   return (
     <div>
-      <form className={styles.registerForm}>
+      <form className={styles.registerForm} onSubmit={handleSubmit}>
         <div>
           <h1 className={styles.register_title}>회원가입</h1>
         </div>
@@ -34,41 +45,47 @@ const Register = () => {
               type="text"
               className={styles.userId}
               id="userId"
+              name="userId"
               placeholder="아이디"
-              value={userData.id}
+              value={formData.userId}
+              onChange={handleChange}
               autoFocus
-            ></input>
+            />
             <input
               type="password"
               className={styles.password}
-              id="userPassword"
+              id="userPw"
+              name="userPw"
               placeholder="비밀번호"
-              value={userData.passwd}
-            ></input>
+              value={formData.userPw}
+              onChange={handleChange}
+            />
             <input
               type="password"
               className={styles.password}
-              id="userPassword"
+              id="passwdCheck"
+              name="passwdCheck"
               placeholder="비밀번호 확인"
-              value={userData.passwdCheck}
-            ></input>
+              value={formData.passwdCheck}
+              onChange={handleChange}
+            />
             <input
               type="text"
               className={styles.userId}
-              id="Email"
+              id="userEmail"
+              name="userEmail"
               placeholder="이메일"
-              value={userData.email}
-            ></input>
-            <button
-              className={styles.registerBut}
-              disabled={isValid ? false : true}
-            >
+              value={formData.userEmail}
+              onChange={handleChange}
+            />
+            {error && <p className={styles.error}>{error}</p>}
+            <button className={styles.registerBut} type="submit">
               Register
             </button>
           </div>
         </div>
         <div className={styles.link}>
-          <Link to="/login">로그인으로 돌아가기기</Link>
+          <Link to="/login">로그인으로 돌아가기</Link>
         </div>
       </form>
     </div>
