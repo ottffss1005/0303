@@ -12,6 +12,7 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(bodyParser.json());
 app.use(express.json());
+app.use("/uploads",express.static("uploads"))
 
 
 // 기본 라우트
@@ -53,9 +54,13 @@ mongoose
 
   
 
-//라우팅 - 로그인
+//로그인 라우터
 const authRouter = require("./routes/auth");
 app.use("/api", authRouter);
+
+// 사진 업로드 라우터
+const photoRouter = require("./routes/photo");
+app.use("/api", photoRouter);
 
 // 서버 실행
 app.listen(PORT, () => {

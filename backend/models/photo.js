@@ -8,7 +8,7 @@ const photoSchema = new mongoose.Schema({
         maxlength: 50,
     },
     userId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         ref: 'User',
         // type: String,
         // required: true,
