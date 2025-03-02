@@ -1,14 +1,14 @@
 // useAuth.js
 import { useNavigate } from "react-router-dom";
-import { login } from "../api/auth.api";
+import { login, signup } from "../api/auth.api";
 import { useAlert } from "./useAlert";
 import { useAuthStore } from "../store/authStore";
-import { signup } from "../api/auth.api";
+
 
 export const useAuth = () => {
     const { showAlert } = useAlert();
     const navigate = useNavigate();
-    const { storeLogin } = useAuthStore();
+    const { storeLogin, storeLogout } = useAuthStore();
 
     const userLogin = (data) => {
         login(data).then(
@@ -30,6 +30,11 @@ export const useAuth = () => {
             navigate("/Login");
         });
     };
+    const userLogout = () => {
+        storeLogout();
+        showAlert("로그아웃이 완료되었습니다.");
+        navigate("/");
+    };
 
-    return { userLogin, userSignup };
+    return { userLogin, userSignup, userLogout };
 };

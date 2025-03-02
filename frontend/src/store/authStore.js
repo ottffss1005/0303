@@ -17,11 +17,11 @@ export const removeToken = () => {
 export const useAuthStore = create((set) => ({
   isloggedIn: getToken() ? true : false,
   storeLogin: (token) => {
-    set({ isloggedIn: true });
+    set(() => ({ isLoggedIn: true }));
     setToken(token);
   },
   storeLogout: () => {
-    set({ isloggedIn: false });
+    set(() => ({ isLoggedIn: false }));
     removeToken();
   },
 }));

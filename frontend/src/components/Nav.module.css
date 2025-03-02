@@ -28,3 +28,15 @@
   margin-right: 1rem;
   width: 35px;
 }
+
+.Logout_but {
+  width: 200px;
+  height: 100px;
+  font-size: 1.5rem;
+  background-color: #0f4c2e;
+  color: #c0c0c0;
+  border: none;
+  margin-top: 10rem;
+  font-family: inherit;
+  cursor: pointer;
+}
