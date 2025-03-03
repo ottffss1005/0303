@@ -1,6 +1,6 @@
 // useAuth.js
 import { useNavigate } from "react-router-dom";
-import { login, signup } from "../api/auth.api";
+import { login, signup, uploadPhoto } from "../api/auth.api";
 import { useAlert } from "./useAlert";
 import { useAuthStore } from "../store/authStore";
 
@@ -35,6 +35,19 @@ export const useAuth = () => {
         showAlert("로그아웃이 완료되었습니다.");
         navigate("/");
     };
+    const userUploadPhoto = async (file) => {
+        const formData = new FormData();
+        formData.append("image", file);
 
-    return { userLogin, userSignup, userLogout };
+        try {
+            const result = await uploadPhoto(formData);
+            showAlert("사진 업로드 성공: ${result.photoUrl}");
+            return result.photoUrl;
+        } catch (error) {
+            showAlert("사진 업로드 실패!");
+            console.error(error);
+            return null;
+        }
+    };
+    return { userLogin, userSignup, userLogout, userUploadPhoto };
 };
