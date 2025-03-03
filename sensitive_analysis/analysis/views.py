@@ -23,10 +23,11 @@ from google.cloud import vision
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
 from tensorflow.keras.preprocessing import image as keras_image
 
-# 새 모델 임포트: Photo와 Analysis (새로운 모델)
+# 모델 임포트: Photo와 Analysis
 from .models import Photo, Analysis
 
 # 외부 파일에서 지역명 리스트 로드 (regions.json 파일)
+# regions.json은 프로젝트 루트(즉, manage.py가 있는 디렉토리)에 위치합니다.
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 REGIONS_FILE = os.path.join(BASE_DIR, "regions.json")
 try:
@@ -40,7 +41,7 @@ except Exception as e:
         "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"
     ]
 
-# 전역: VGG16 모델 로딩
+# 전역: 사전 학습된 VGG16 모델 로딩 (include_top=False, pooling='avg')
 model = VGG16(weights="imagenet", include_top=False, pooling="avg")
 
 
@@ -84,7 +85,6 @@ def detect_credit_card_numbers(text):
 # 헬퍼 함수 1. 이미지 임베딩 계산 (VGG16 이용)
 def compute_embedding(image_bytes):
     try:
-        # 새 BytesIO 객체 생성
         img = Image.open(io.BytesIO(image_bytes)).convert("RGB")
         img = img.resize((224, 224))
         x = keras_image.img_to_array(img)
@@ -133,12 +133,14 @@ def analyze_sensitive_text(text):
     score = 0
     details = []
 
+    # 문서 관련 키워드 감지
     sensitive_keywords = ["신분증", "운전면허증", "여권", "명함", "노트"]
     for keyword in sensitive_keywords:
         if keyword in text:
             score += 20
             details.append(f"문서 관련 '{keyword}' 키워드 감지: 문서 또는 개인정보 노출 가능")
 
+    # 전화번호 감지
     phone_pattern = re.compile(r"\b(01[016789])[- ]?(\d{3,4})[- ]?(\d{4})\b")
     phone_matches = phone_pattern.findall(text)
     if phone_matches:
@@ -146,6 +148,7 @@ def analyze_sensitive_text(text):
         score += 20 * len(phone_numbers)
         details.append("전화번호 감지: " + ", ".join(phone_numbers) + " (개인 연락처 정보 노출 위험)")
 
+    # 주민등록번호 감지
     ssn_pattern = re.compile(r"\b(\d{6})[- ]?(\d{7})\b")
     ssn_matches = ssn_pattern.findall(text)
     if ssn_matches:
@@ -153,19 +156,24 @@ def analyze_sensitive_text(text):
         score += 30 * len(ssn_numbers)
         details.append("주민등록번호 감지: " + ", ".join(ssn_numbers) + " (극히 민감한 개인정보 노출)")
 
+    # 신용카드 번호 감지 (OCR 오차 보정 포함)
     cc_numbers = detect_credit_card_numbers(text)
     if cc_numbers:
         score += 25 * len(cc_numbers)
         details.append("신용카드 번호 감지: " + ", ".join(cc_numbers) + " (금융정보 노출 위험)")
 
+    # 지역명 감지: 정규식을 사용해 단어 경계를 고려 (예: "서울"이 독립적으로 등장하는지)
     detected_regions = []
     for region in regions_from_file:
-        if region in text and region not in detected_regions:
+        # (?<![가-힣])와 (?![가-힣])를 사용하여 주변에 한글 문자가 없는 경우에만 매칭
+        pattern = re.compile(r"(?<![가-힣])" + re.escape(region) + r"(?![가-힣])")
+        if pattern.search(text) and region not in detected_regions:
             detected_regions.append(region)
     if detected_regions:
         score += 20 * len(detected_regions)
         details.append("지역명 감지: " + ", ".join(detected_regions) +
                        " (특정 지역 정보 노출로 개인 생활 패턴 유추 가능)")
+
     return score, details
 
 
@@ -210,41 +218,52 @@ def analyze_barcode_qr(content):
     return score, details
 
 
-# 헬퍼 함수 6. 과거 Analysis 내역을 통한 추가 추론
+# 헬퍼 함수 6. 과거 Analysis 내역을 통한 추가 추론 개선
 def infer_context_from_history_extended(current_visual_details):
+    """
+    현재 이미지의 랜드마크 및 지역명 정보를 바탕으로,
+    이전 Analysis 레코드의 분석 내역에서 '랜드마크(위치) 감지:'와 '지역명 감지:' 항목을 모두 수집합니다.
+    과거 이미지에서 동일한 장소/지역이 2회 이상 등장하면 추가 위험 점수를 부여합니다.
+    """
     inferred_score = 0
     inferred_details = []
-    current_landmarks = []
+    current_locations = []
+
+    # 현재 이미지에서 랜드마크와 지역명 모두 추출
     for detail in current_visual_details:
         if detail.startswith("랜드마크(위치) 감지:"):
-            landmarks_str = detail.split(":", 1)[-1].strip()
-            landmarks = [land.strip() for land in landmarks_str.split(",")]
-            current_landmarks.extend(landmarks)
-    if not current_landmarks:
+            ls = detail.split(":", 1)[-1].strip()
+            current_locations.extend([x.strip() for x in ls.split(",")])
+        elif detail.startswith("지역명 감지:"):
+            ls = detail.split(":", 1)[-1].strip()
+            current_locations.extend([x.strip() for x in ls.split(",")])
+    if not current_locations:
         return inferred_score, inferred_details
-    all_landmarks = []
+
+    all_locations = []
     previous_analyses = Analysis.objects.exclude(analysis_details__isnull=True)
     for analysis in previous_analyses:
         try:
             parsed = json.loads(analysis.analysis_details)
             risk_details = parsed.get("risk_details", [])
             for d in risk_details:
-                if d.startswith("랜드마크(위치) 감지:"):
+                if d.startswith("랜드마크(위치) 감지:") or d.startswith("지역명 감지:"):
                     ls = d.split(":", 1)[-1].strip()
-                    lands = [x.strip() for x in ls.split(",")]
-                    all_landmarks.extend(lands)
+                    all_locations.extend([x.strip() for x in ls.split(",")])
         except Exception:
             continue
-    if not all_landmarks:
+    if not all_locations:
         return inferred_score, inferred_details
-    landmark_counts = Counter(all_landmarks)
-    frequent_landmarks = {land for land, count in landmark_counts.items() if count >= 2}
-    common = set(current_landmarks).intersection(frequent_landmarks)
+
+    location_counts = Counter(all_locations)
+    # 임계치를 2회 이상에서 3회 이상으로 올릴 수 있음 (필요시 조정)
+    frequent_locations = {loc for loc, count in location_counts.items() if count >= 2}
+    common = set(current_locations).intersection(frequent_locations)
     if common:
         inferred_score += 10
         inferred_details.append(
-            f"과거 이미지에서 자주 등장하는 장소 ({', '.join(common)})가 현재 이미지에도 감지됨: "
-            "해당 장소는 개인의 주거지나 사무실 등으로 추정되어 개인정보 노출 위험이 증가합니다."
+            f"과거 이미지에서 자주 등장하는 장소/지역 ({', '.join(common)})가 현재 이미지에도 감지됨: "
+            "해당 장소는 주거지나 사무실 등으로 추정되어 개인정보 노출 위험이 증가합니다."
         )
     return inferred_score, inferred_details
 
@@ -259,17 +278,17 @@ def analyze_image(request):
     if not image_file:
         return JsonResponse({"error": "이미지가 업로드되지 않았습니다."}, status=400)
     
-    # 파일 내용 한 번 읽기
+    # 파일 내용 한 번 읽어 재사용
     file_content = image_file.read()
     if not file_content:
         return JsonResponse({"error": "업로드된 파일이 비어 있습니다."}, status=400)
     
-    # photo_id 처리: POST 데이터에서 받아오거나, 없으면 랜덤 생성
+    # photo_id 처리: POST 데이터에서 받아오거나 없으면 랜덤 생성
     photo_id = request.POST.get("photo_id")
     if not photo_id:
         photo_id = str(uuid.uuid4())[:8]
     
-    # Photo 객체 생성 또는 가져오기 (파일 저장: ContentFile 사용)
+    # Photo 객체 생성 또는 가져오기 (ContentFile 사용)
     photo_obj, created = Photo.objects.get_or_create(
         photo_id=photo_id,
         defaults={"image": ContentFile(file_content, name=image_file.name)}
@@ -327,7 +346,7 @@ def analyze_image(request):
     analysis_summary = {"extracted_text": extracted_text, "risk_details": risk_details}
     analysis_summary_str = json.dumps(analysis_summary, ensure_ascii=False)
     
-    # Analysis 객체 생성 (Photo를 외래키로 연결)
+    # Analysis 객체 생성 (Photo 외래키로 연결)
     analysis_obj = Analysis.objects.create(
         photo=photo_obj,
         embedding=embedding_to_str(new_embedding) if new_embedding is not None else "",
