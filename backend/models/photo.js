@@ -1,6 +1,6 @@
 const mongoose = require("mongoose");
 
-const photoSChema = new mongoose.Schema({
+const photoSchema = new mongoose.Schema({
     photoId: {
         type: String,
         required: true,
@@ -8,7 +8,7 @@ const photoSChema = new mongoose.Schema({
         maxlength: 50,
     },
     userId: {
-        type: mongoose.Schema.Types.ObjectId,
+        type: String,
         ref: 'User',
         // type: String,
         // required: true,
