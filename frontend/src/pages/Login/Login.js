@@ -25,7 +25,7 @@ const Login = () => {
   };
 
   return (
-    <div>
+    <div className={styles.container}>
       <form className={styles.loginForm} onSubmit={handleSubmit}>
         <div>
           <h1 className={styles.login_title}>로그인</h1>
@@ -60,6 +60,6 @@ const Login = () => {
       </form>
     </div>
   );
-};
+}
 
 export default Login;
