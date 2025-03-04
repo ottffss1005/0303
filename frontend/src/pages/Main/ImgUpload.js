@@ -3,15 +3,18 @@ import styles from "./ImgUpload.module.css";
 import ChatBubble from "./ChatBubble";
 
 const ImgUpload = () => {
-  const [messages, setMessages] = useState([]); // 채팅 메시지 상태
-  const fileInputRef = useRef(null); // 파일 입력 필드 참조
+  const [messages, setMessages] = useState([]);
+  const fileInputRef = useRef(null);
 
   const addImageFile = (event) => {
     const file = event.target.files[0];
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setMessages([...messages, { type: "image", content: reader.result, sender: "user" }]);
+        setMessages([
+          ...messages,
+          { type: "image", content: reader.result, sender: "user" },
+        ]);
       };
       reader.readAsDataURL(file);
     }
@@ -26,16 +29,31 @@ const ImgUpload = () => {
       <div className={styles.chatWindow}>
         {messages.length > 0 ? (
           messages.map((msg, index) => (
-            <ChatBubble key={index} message={msg.content} sender={msg.sender} type={msg.type} />
+            <ChatBubble
+              key={index}
+              message={msg.content}
+              sender={msg.sender}
+              type={msg.type}
+            />
           ))
         ) : (
-          <div className={styles.placeholder}>SNS에 업로드할 사진을 추가하세요 📷</div>
+          <div className={styles.placeholder}>
+            SNS에 업로드할 사진을 추가하세요 📷
+          </div>
         )}
       </div>
 
       <div className={styles.inputContainer}>
-        <input type="file" accept="image/*" ref={fileInputRef} onChange={addImageFile} className={styles.hiddenInput} />
-        <button className={styles.uploadButton} onClick={handleUploadClick}>📁 파일 선택</button>
+        <input
+          type="file"
+          accept="image/*"
+          ref={fileInputRef}
+          onChange={addImageFile}
+          className={styles.hiddenInput}
+        />
+        <button className={styles.uploadButton} onClick={handleUploadClick}>
+          📁 파일 선택
+        </button>
       </div>
     </div>
   );
