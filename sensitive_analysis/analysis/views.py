@@ -7,6 +7,8 @@ import numpy as np
 from collections import Counter
 from PIL import Image
 from pyzbar.pyzbar import decode
+from .models import Analysis
+
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
