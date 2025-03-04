@@ -1,11 +1,8 @@
-# privacy_checker/views.py
 import io
 import re
 import json
-import base64
 import os
 import uuid
-import requests
 import numpy as np
 from collections import Counter
 from PIL import Image
@@ -13,8 +10,10 @@ from pyzbar.pyzbar import decode
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
-from django.core.files.base import ContentFile
 from django.conf import settings
+from django.utils import timezone
+
+from pymongo import MongoClient
 
 # Google Cloud Vision API 관련
 from google.cloud import vision
@@ -23,62 +22,100 @@ from google.cloud import vision
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
 from tensorflow.keras.preprocessing import image as keras_image
 
-# 모델 임포트: Photo와 Analysis
-from .models import Photo, Analysis
+# Analysis 모델은 MongoDB에 저장하므로, ORM은 사용하지 않습니다.
+# (분석 결과는 MongoDB의 analysis 컬렉션에 document로 저장합니다.)
 
-# 외부 파일에서 지역명 리스트 로드 (regions.json 파일)
-# regions.json은 프로젝트 루트(즉, manage.py가 있는 디렉토리)에 위치합니다.
+# BASE_DIR는 manage.py가 있는 디렉터리(프로젝트 루트)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# regions.json 파일 로드 (프로젝트 루트에 위치)
 REGIONS_FILE = os.path.join(BASE_DIR, "regions.json")
 try:
     with open(REGIONS_FILE, "r", encoding="utf-8") as f:
         regions_from_file = json.load(f)
+        print("Loaded regions:", regions_from_file)
 except Exception as e:
-    print("Trying to load region file from:", REGIONS_FILE)
-    print("regions.json 로드 실패:", e)
+    print("Error loading regions from:", REGIONS_FILE, e)
     regions_from_file = [
-        "서울", "부산", "대구", "인천", "광주", "대전", "울산", "세종",
-        "경기", "강원", "충북", "충남", "전북", "전남", "경북", "경남", "제주"
+        "서울",
+        "부산",
+        "대구",
+        "인천",
+        "광주",
+        "대전",
+        "울산",
+        "세종",
+        "경기",
+        "강원",
+        "충북",
+        "충남",
+        "전북",
+        "전남",
+        "경북",
+        "경남",
+        "제주",
     ]
 
-# 전역: 사전 학습된 VGG16 모델 로딩 (include_top=False, pooling='avg')
+# 전역: VGG16 모델 로딩 (include_top=False, pooling='avg')
 model = VGG16(weights="imagenet", include_top=False, pooling="avg")
 
 
-# 헬퍼 함수 0. 신용카드 번호 후보 추출 (오차 보정 포함)
+# MongoDB 연결 함수
+def get_mongo_db():
+    client = MongoClient(settings.MONGO_URI)
+    db = client.get_default_database()  # URI에 지정된 DB 사용 ("PROSNS")
+    return db
+
+
+# 1. 업로드된 이미지를 BASE_DIR/uploaded_images 폴더에 {photo_id}.jpg 로 저장
+def save_uploaded_image(photo_id, file_content):
+    upload_folder = os.path.join(BASE_DIR, "uploaded_images")
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+    file_path = os.path.join(upload_folder, f"{photo_id}.jpg")
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    return file_path
+
+
+# 헬퍼 함수 0. 신용카드 번호 후보 추출 (OCR 오차 보정, '*' 허용)
 def detect_credit_card_numbers(text):
     mapping = {
-        "b": "8", "B": "8",
-        "O": "0", "o": "0",
-        "I": "1", "l": "1",
-        "S": "5", "s": "5",
-        "Z": "2", "z": "2",
+        "b": "8",
+        "B": "8",
+        "O": "0",
+        "o": "0",
+        "I": "1",
+        "l": "1",
+        "S": "5",
+        "s": "5",
+        "Z": "2",
+        "z": "2",
     }
-    cc_pattern = re.compile(r"\b([\w]{4})[- ]?([\w]{4})[- ]?([\w]{4})[- ]?([\w]{4})\b")
+    # '*'를 허용하도록 [\w*]
+    cc_pattern = re.compile(
+        r"\b([\w*]{4})[- ]?([\w*]{4})[- ]?([\w*]{4})[- ]?([\w*]{4})\b"
+    )
     candidates = []
     for groups in cc_pattern.findall(text):
         candidate_groups = []
         valid = True
         for group in groups:
             new_group = ""
-            non_digit_count = 0
             for ch in group:
-                if ch.isdigit():
+                if ch.isdigit() or ch == "*":
                     new_group += ch
+                elif ch in mapping:
+                    new_group += mapping[ch]
                 else:
-                    if ch in mapping:
-                        new_group += mapping[ch]
-                        non_digit_count += 1
-                    else:
-                        valid = False
-                        break
-            if not valid or len(new_group) != 4 or non_digit_count > 1:
+                    valid = False
+                    break
+            if not valid or len(new_group) != 4:
                 valid = False
                 break
             candidate_groups.append(new_group)
         if valid:
-            card_number = " ".join(candidate_groups)
-            candidates.append(card_number)
+            candidates.append(" ".join(candidate_groups))
     return candidates
 
 
@@ -128,52 +165,64 @@ def extract_text_from_image(content):
         return ""
 
 
-# 헬퍼 함수 3. 민감정보 분석 (엄격한 검출)
+# 헬퍼 함수 3. 민감정보 분석 (텍스트 기반, ID/PW 처리 포함)
 def analyze_sensitive_text(text):
     score = 0
     details = []
-
-    # 문서 관련 키워드 감지
+    # 문서 관련 키워드
     sensitive_keywords = ["신분증", "운전면허증", "여권", "명함", "노트"]
     for keyword in sensitive_keywords:
         if keyword in text:
             score += 20
-            details.append(f"문서 관련 '{keyword}' 키워드 감지: 문서 또는 개인정보 노출 가능")
-
-    # 전화번호 감지
-    phone_pattern = re.compile(r"\b(01[016789])[- ]?(\d{3,4})[- ]?(\d{4})\b")
+            details.append(f"문서 관련 '{keyword}' 감지: 개인정보 노출 위험")
+    # 전화번호 (앞자리 1~2자리 포함)
+    phone_pattern = re.compile(r"\b(0\d{1,2})[- ]?(\d{3,4})[- ]?(\d{4})\b")
     phone_matches = phone_pattern.findall(text)
     if phone_matches:
         phone_numbers = ["".join(match) for match in phone_matches]
         score += 20 * len(phone_numbers)
-        details.append("전화번호 감지: " + ", ".join(phone_numbers) + " (개인 연락처 정보 노출 위험)")
-
-    # 주민등록번호 감지
+        details.append(
+            "전화번호 감지: " + ", ".join(phone_numbers) + " (연락처 정보 노출 위험)"
+        )
+    # 주민등록번호
     ssn_pattern = re.compile(r"\b(\d{6})[- ]?(\d{7})\b")
     ssn_matches = ssn_pattern.findall(text)
     if ssn_matches:
         ssn_numbers = ["".join(match) for match in ssn_matches]
         score += 30 * len(ssn_numbers)
-        details.append("주민등록번호 감지: " + ", ".join(ssn_numbers) + " (극히 민감한 개인정보 노출)")
-
-    # 신용카드 번호 감지 (OCR 오차 보정 포함)
+        details.append(
+            "주민등록번호 감지: " + ", ".join(ssn_numbers) + " (매우 민감한 정보 노출)"
+        )
+    # 신용카드 번호 (모자이크 처리 포함)
     cc_numbers = detect_credit_card_numbers(text)
     if cc_numbers:
         score += 25 * len(cc_numbers)
-        details.append("신용카드 번호 감지: " + ", ".join(cc_numbers) + " (금융정보 노출 위험)")
-
-    # 지역명 감지: 정규식을 사용해 단어 경계를 고려 (예: "서울"이 독립적으로 등장하는지)
+        details.append(
+            "신용카드 번호 감지: " + ", ".join(cc_numbers) + " (금융정보 노출 위험)"
+        )
+    # 추가 개인정보 단어: ID, 아이디, PW, 비밀번호
+    id_keywords = ["ID", "아이디"]
+    pw_keywords = ["PW", "비밀번호"]
+    for kw in id_keywords:
+        if kw in text:
+            score += 15
+            details.append(f"개인정보({kw}) 감지: 노출 위험")
+            break
+    for kw in pw_keywords:
+        if kw in text:
+            score += 15
+            details.append(f"개인정보({kw}) 감지: 노출 위험")
+            break
+    # 지역명 감지: regions.json에 있는 지역이 텍스트에 한 번이라도 등장하면 점수를 추가
     detected_regions = []
     for region in regions_from_file:
-        # (?<![가-힣])와 (?![가-힣])를 사용하여 주변에 한글 문자가 없는 경우에만 매칭
-        pattern = re.compile(r"(?<![가-힣])" + re.escape(region) + r"(?![가-힣])")
-        if pattern.search(text) and region not in detected_regions:
+        if region in text and region not in detected_regions:
             detected_regions.append(region)
     if detected_regions:
-        score += 20 * len(detected_regions)
-        details.append("지역명 감지: " + ", ".join(detected_regions) +
-                       " (특정 지역 정보 노출로 개인 생활 패턴 유추 가능)")
-
+        score += 10 * len(detected_regions)
+        details.append(
+            "지역명 감지: " + ", ".join(detected_regions) + " (지역 정보 노출 위험)"
+        )
     return score, details
 
 
@@ -186,18 +235,28 @@ def analyze_visual_elements(content):
     try:
         landmark_response = client.landmark_detection(image=image_vision)
         if landmark_response.landmark_annotations:
-            landmark_names = [landmark.description for landmark in landmark_response.landmark_annotations]
+            landmark_names = [
+                landmark.description
+                for landmark in landmark_response.landmark_annotations
+            ]
             score += 15
-            details.append(f"랜드마크(위치) 감지: {', '.join(landmark_names)} (해당 장소를 통해 위치 유추 가능)")
+            details.append(
+                f"랜드마크 감지: {', '.join(landmark_names)} (위치 유추 가능)"
+            )
     except Exception as e:
         print("Landmark detection error:", e)
     try:
         label_response = client.label_detection(image=image_vision)
         if label_response.label_annotations:
-            label_descriptions = [label.description for label in label_response.label_annotations]
-            if any("신용카드" in label or "credit card" in label for label in label_descriptions):
+            label_descriptions = [
+                label.description for label in label_response.label_annotations
+            ]
+            if any(
+                "신용카드" in label or "credit card" in label
+                for label in label_descriptions
+            ):
                 score += 25
-                details.append("신용카드 관련 항목 감지 (라벨 분석): 금융정보 노출 위험")
+                details.append("신용카드 항목 감지 (라벨 분석): 금융정보 노출 위험")
     except Exception as e:
         print("Label detection error:", e)
     return score, details
@@ -212,7 +271,7 @@ def analyze_barcode_qr(content):
         codes = decode(pil_image)
         if codes:
             score += 10
-            details.append("바코드 또는 QR 코드 감지: 해당 코드를 통해 추가 정보 접근 가능")
+            details.append("바코드/QR 코드 감지: 추가 정보 접근 가능")
     except Exception as e:
         print("Barcode/QR detection error:", e)
     return score, details
@@ -222,16 +281,15 @@ def analyze_barcode_qr(content):
 def infer_context_from_history_extended(current_visual_details):
     """
     현재 이미지의 랜드마크 및 지역명 정보를 바탕으로,
-    이전 Analysis 레코드의 분석 내역에서 '랜드마크(위치) 감지:'와 '지역명 감지:' 항목을 모두 수집합니다.
-    과거 이미지에서 동일한 장소/지역이 2회 이상 등장하면 추가 위험 점수를 부여합니다.
+    이전 Analysis 문서의 risk_details (리스트)에서
+    '랜드마크 감지:'와 '지역명 감지:' 항목을 모두 수집합니다.
+    동일한 장소/지역이 2회 이상 등장하면 추가 위험 점수를 부여합니다.
     """
     inferred_score = 0
     inferred_details = []
     current_locations = []
-
-    # 현재 이미지에서 랜드마크와 지역명 모두 추출
     for detail in current_visual_details:
-        if detail.startswith("랜드마크(위치) 감지:"):
+        if detail.startswith("랜드마크 감지:"):
             ls = detail.split(":", 1)[-1].strip()
             current_locations.extend([x.strip() for x in ls.split(",")])
         elif detail.startswith("지역명 감지:"):
@@ -239,101 +297,108 @@ def infer_context_from_history_extended(current_visual_details):
             current_locations.extend([x.strip() for x in ls.split(",")])
     if not current_locations:
         return inferred_score, inferred_details
-
     all_locations = []
-    previous_analyses = Analysis.objects.exclude(analysis_details__isnull=True)
+    previous_analyses = Analysis.objects.exclude(risk_details__isnull=True)
     for analysis in previous_analyses:
         try:
-            parsed = json.loads(analysis.analysis_details)
-            risk_details = parsed.get("risk_details", [])
-            for d in risk_details:
-                if d.startswith("랜드마크(위치) 감지:") or d.startswith("지역명 감지:"):
+            risk_details_list = analysis.risk_details if analysis.risk_details else []
+            for d in risk_details_list:
+                if d.startswith("랜드마크 감지:") or d.startswith("지역명 감지:"):
                     ls = d.split(":", 1)[-1].strip()
                     all_locations.extend([x.strip() for x in ls.split(",")])
         except Exception:
             continue
     if not all_locations:
         return inferred_score, inferred_details
+    from collections import Counter
 
     location_counts = Counter(all_locations)
-    # 임계치를 2회 이상에서 3회 이상으로 올릴 수 있음 (필요시 조정)
     frequent_locations = {loc for loc, count in location_counts.items() if count >= 2}
     common = set(current_locations).intersection(frequent_locations)
     if common:
         inferred_score += 10
         inferred_details.append(
-            f"과거 이미지에서 자주 등장하는 장소/지역 ({', '.join(common)})가 현재 이미지에도 감지됨: "
-            "해당 장소는 주거지나 사무실 등으로 추정되어 개인정보 노출 위험이 증가합니다."
+            f"과거 이미지에서 자주 등장하는 장소/지역 ({', '.join(common)})가 현재 이미지에도 감지됨: 개인정보 노출 위험 증가"
         )
     return inferred_score, inferred_details
 
 
-# 메인 뷰: 이미지 분석, Photo 및 Analysis 저장, 추가 추론 및 사용자 전화번호 노출 확인
+##############################################################################
+# 메인 뷰: 이미지 분석 및 MongoDB의 analysis 컬렉션에 저장
+##############################################################################
 @csrf_exempt
 def analyze_image(request):
     if request.method != "POST":
         return JsonResponse({"error": "POST 요청만 허용됩니다."}, status=405)
-    
+
     image_file = request.FILES.get("image")
     if not image_file:
         return JsonResponse({"error": "이미지가 업로드되지 않았습니다."}, status=400)
-    
-    # 파일 내용 한 번 읽어 재사용
+
     file_content = image_file.read()
     if not file_content:
         return JsonResponse({"error": "업로드된 파일이 비어 있습니다."}, status=400)
-    
-    # photo_id 처리: POST 데이터에서 받아오거나 없으면 랜덤 생성
+
+    # photo_id 처리: 요청에서 받아오거나 없으면 랜덤 생성
     photo_id = request.POST.get("photo_id")
     if not photo_id:
         photo_id = str(uuid.uuid4())[:8]
-    
-    # Photo 객체 생성 또는 가져오기 (ContentFile 사용)
-    photo_obj, created = Photo.objects.get_or_create(
-        photo_id=photo_id,
-        defaults={"image": ContentFile(file_content, name=image_file.name)}
-    )
-    
+
+    # 이미지 파일을 BASE_DIR/uploaded_images 폴더에 {photo_id}.jpg 로 저장
+    upload_folder = os.path.join(BASE_DIR, "uploaded_images")
+    if not os.path.exists(upload_folder):
+        os.makedirs(upload_folder)
+    file_path = os.path.join(upload_folder, f"{photo_id}.jpg")
+    with open(file_path, "wb") as f:
+        f.write(file_content)
+    photoUrl = f"/uploaded_images/{photo_id}.jpg"
+    photoName = image_file.name
+    user_id = request.POST.get("user_id", "")
+    sns_api = request.POST.get("sns_api", "false").lower() == "true"
+    uploadTime = timezone.now()
+
     total_risk_score = 0
     risk_details = []
-    
+
     extracted_text = extract_text_from_image(file_content)
-    
+
     text_score, text_details = analyze_sensitive_text(extracted_text)
     total_risk_score += text_score
     risk_details.extend(text_details)
-    
+
     visual_score, visual_details = analyze_visual_elements(file_content)
     total_risk_score += visual_score
     risk_details.extend(visual_details)
-    
+
     barcode_score, barcode_details = analyze_barcode_qr(file_content)
     total_risk_score += barcode_score
     risk_details.extend(barcode_details)
-    
+
     new_embedding = compute_embedding(file_content)
     if new_embedding is None:
         risk_details.append("이미지 임베딩 추출 실패")
-    
-    infer_score_ext, infer_details_ext = infer_context_from_history_extended(visual_details)
+
+    infer_score_ext, infer_details_ext = infer_context_from_history_extended(
+        visual_details
+    )
     total_risk_score += infer_score_ext
     risk_details.extend(infer_details_ext)
-    
+
     if request.user.is_authenticated:
         registered_phone = getattr(request.user, "phone_number", None)
         if registered_phone:
             if registered_phone in extracted_text:
                 total_risk_score += 20
                 risk_details.append(
-                    f"등록된 전화번호 노출: {registered_phone} (가입 시 입력한 전화번호가 이미지에 포함되어 있음)"
+                    f"등록된 전화번호 노출: {registered_phone} (가입 시 입력한 전화번호가 이미지에 포함됨)"
                 )
             else:
                 risk_details.append(
-                    "등록된 전화번호 미노출: 가입 시 입력한 전화번호가 이미지에 포함되어 있지 않음"
+                    "등록된 전화번호 미노출: 가입 시 입력한 전화번호가 이미지에 포함되지 않음"
                 )
-    
+
     historical_inference_possible = bool(infer_details_ext)
-    
+
     if total_risk_score > 100:
         total_risk_score = 100
     if total_risk_score < 30:
@@ -342,23 +407,34 @@ def analyze_image(request):
         risk_level = "중간"
     else:
         risk_level = "높음"
-    
-    analysis_summary = {"extracted_text": extracted_text, "risk_details": risk_details}
-    analysis_summary_str = json.dumps(analysis_summary, ensure_ascii=False)
-    
-    # Analysis 객체 생성 (Photo 외래키로 연결)
-    analysis_obj = Analysis.objects.create(
-        photo=photo_obj,
-        embedding=embedding_to_str(new_embedding) if new_embedding is not None else "",
-        extracted_text=extracted_text,
-        risk_score=total_risk_score,
-        risk_level=risk_level,
-        analysis_details=analysis_summary_str,
-    )
-    
+
+    analysis_doc = {
+        "photo_id": photo_id,
+        "embedding": (
+            embedding_to_str(new_embedding) if new_embedding is not None else ""
+        ),
+        "extracted_text": extracted_text,
+        "risk_score": total_risk_score,
+        "risk_level": risk_level,
+        "risk_details": risk_details,  # 리스트
+        "historical_inference_possible": historical_inference_possible,
+        "historical_inference_details": infer_details_ext,  # 리스트
+        "user_id": user_id,
+        "sns_api": sns_api,
+        "photoName": photoName,
+        "photoUrl": photoUrl,
+        "uploadTime": uploadTime,
+        "created_at": timezone.now(),
+    }
+
+    db = get_mongo_db()
+    analysis_coll = db["analysis"]
+    result_insert = analysis_coll.insert_one(analysis_doc)
+    analysis_id = str(result_insert.inserted_id)
+
     result = {
         "photo_id": photo_id,
-        "analysis_id": analysis_obj.analysis_id,
+        "analysis_id": analysis_id,
         "risk_score": total_risk_score,
         "risk_level": risk_level,
         "risk_details": risk_details,
