@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import React from "react";
 import styles from "./Nav.module.css";
+import { useAuth } from "../hooks/useAuth";
 
 import logo from "../assets/images/logo/logo1.png";
 import mainIcon from "../assets/images/icon/chat.png";
@@ -8,6 +9,8 @@ import mypageIcon from "../assets/images/icon/human.png";
 import settingsIcon from "../assets/images/icon/settings.png";
 
 function Nav() {
+  const { userLogout } = useAuth();
+
   return (
     <div className={styles.nav_box}>
       <img src={logo} alt="logo" className={styles.logo} />
@@ -27,6 +30,7 @@ function Nav() {
         />
         환경설정
       </Link>
+      <button className={styles.Logout_but} onClick={userLogout}>로그아웃</button>
     </div>
   );
 }
