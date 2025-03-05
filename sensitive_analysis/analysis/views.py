@@ -7,8 +7,6 @@ import numpy as np
 from collections import Counter
 from PIL import Image
 from pyzbar.pyzbar import decode
-from .models import Analysis
-
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
@@ -24,10 +22,10 @@ from google.cloud import vision
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
 from tensorflow.keras.preprocessing import image as keras_image
 
-# Analysis 모델은 MongoDB에 저장하므로, ORM은 사용하지 않습니다.
-# (분석 결과는 MongoDB의 analysis 컬렉션에 document로 저장합니다.)
+# Analysis 모델은 필드명을 참고하기 위한 용도 (MongoDB 저장은 PyMongo 사용)
+from .models import Analysis
 
-# BASE_DIR는 manage.py가 있는 디렉터리(프로젝트 루트)
+# BASE_DIR: manage.py가 있는 프로젝트 루트
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # regions.json 파일 로드 (프로젝트 루트에 위치)
@@ -69,12 +67,12 @@ def get_mongo_db():
     return db
 
 
-# 1. 업로드된 이미지를 BASE_DIR/uploaded_images 폴더에 {photo_id}.jpg 로 저장
-def save_uploaded_image(photo_id, file_content):
+# 1. 업로드된 이미지를 BASE_DIR/uploaded_images 폴더에 {photoId}.jpg로 저장
+def save_uploaded_image(photoId, file_content):
     upload_folder = os.path.join(BASE_DIR, "uploaded_images")
     if not os.path.exists(upload_folder):
         os.makedirs(upload_folder)
-    file_path = os.path.join(upload_folder, f"{photo_id}.jpg")
+    file_path = os.path.join(upload_folder, f"{photoId}.jpg")
     with open(file_path, "wb") as f:
         f.write(file_content)
     return file_path
@@ -94,7 +92,6 @@ def detect_credit_card_numbers(text):
         "Z": "2",
         "z": "2",
     }
-    # '*'를 허용하도록 [\w*]
     cc_pattern = re.compile(
         r"\b([\w*]{4})[- ]?([\w*]{4})[- ]?([\w*]{4})[- ]?([\w*]{4})\b"
     )
@@ -167,17 +164,15 @@ def extract_text_from_image(content):
         return ""
 
 
-# 헬퍼 함수 3. 민감정보 분석 (텍스트 기반, ID/PW 처리 포함)
+# 헬퍼 함수 3. 민감정보 분석 (텍스트 기반, ID/PW 포함)
 def analyze_sensitive_text(text):
     score = 0
     details = []
-    # 문서 관련 키워드
     sensitive_keywords = ["신분증", "운전면허증", "여권", "명함", "노트"]
     for keyword in sensitive_keywords:
         if keyword in text:
             score += 20
             details.append(f"문서 관련 '{keyword}' 감지: 개인정보 노출 위험")
-    # 전화번호 (앞자리 1~2자리 포함)
     phone_pattern = re.compile(r"\b(0\d{1,2})[- ]?(\d{3,4})[- ]?(\d{4})\b")
     phone_matches = phone_pattern.findall(text)
     if phone_matches:
@@ -186,7 +181,6 @@ def analyze_sensitive_text(text):
         details.append(
             "전화번호 감지: " + ", ".join(phone_numbers) + " (연락처 정보 노출 위험)"
         )
-    # 주민등록번호
     ssn_pattern = re.compile(r"\b(\d{6})[- ]?(\d{7})\b")
     ssn_matches = ssn_pattern.findall(text)
     if ssn_matches:
@@ -195,14 +189,12 @@ def analyze_sensitive_text(text):
         details.append(
             "주민등록번호 감지: " + ", ".join(ssn_numbers) + " (매우 민감한 정보 노출)"
         )
-    # 신용카드 번호 (모자이크 처리 포함)
     cc_numbers = detect_credit_card_numbers(text)
     if cc_numbers:
         score += 25 * len(cc_numbers)
         details.append(
             "신용카드 번호 감지: " + ", ".join(cc_numbers) + " (금융정보 노출 위험)"
         )
-    # 추가 개인정보 단어: ID, 아이디, PW, 비밀번호
     id_keywords = ["ID", "아이디"]
     pw_keywords = ["PW", "비밀번호"]
     for kw in id_keywords:
@@ -215,7 +207,7 @@ def analyze_sensitive_text(text):
             score += 15
             details.append(f"개인정보({kw}) 감지: 노출 위험")
             break
-    # 지역명 감지: regions.json에 있는 지역이 텍스트에 한 번이라도 등장하면 점수를 추가
+    # 지역명 감지: regions.json에 있는 각 지역이 한 번이라도 등장하면 위험 점수 +10 (중복 무시)
     detected_regions = []
     for region in regions_from_file:
         if region in text and region not in detected_regions:
@@ -341,22 +333,22 @@ def analyze_image(request):
     if not file_content:
         return JsonResponse({"error": "업로드된 파일이 비어 있습니다."}, status=400)
 
-    # photo_id 처리: 요청에서 받아오거나 없으면 랜덤 생성
-    photo_id = request.POST.get("photo_id")
-    if not photo_id:
-        photo_id = str(uuid.uuid4())[:8]
+    # photoId와 userId는 POST 요청에서 "photoId"와 "userId"로 받습니다.
+    photoId = request.POST.get("photoId")
+    if not photoId:
+        photoId = str(uuid.uuid4())[:8]
 
-    # 이미지 파일을 BASE_DIR/uploaded_images 폴더에 {photo_id}.jpg 로 저장
+    userId = request.POST.get("userId", "")
+
+    # 이미지 파일을 BASE_DIR/uploaded_images 폴더에 {photoId}.jpg로 저장
     upload_folder = os.path.join(BASE_DIR, "uploaded_images")
     if not os.path.exists(upload_folder):
         os.makedirs(upload_folder)
-    file_path = os.path.join(upload_folder, f"{photo_id}.jpg")
+    file_path = os.path.join(upload_folder, f"{photoId}.jpg")
     with open(file_path, "wb") as f:
         f.write(file_content)
-    photoUrl = f"/uploaded_images/{photo_id}.jpg"
-    photoName = image_file.name
-    user_id = request.POST.get("user_id", "")
-    sns_api = request.POST.get("sns_api", "false").lower() == "true"
+    photoUrl = f"/uploaded_images/{photoId}.jpg"
+    photoName = image_file.name  # 사용하지 않음
     uploadTime = timezone.now()
 
     total_risk_score = 0
@@ -411,20 +403,17 @@ def analyze_image(request):
         risk_level = "높음"
 
     analysis_doc = {
-        "photo_id": photo_id,
+        "photoId": photoId,
         "embedding": (
             embedding_to_str(new_embedding) if new_embedding is not None else ""
         ),
         "extracted_text": extracted_text,
         "risk_score": total_risk_score,
         "risk_level": risk_level,
-        "risk_details": risk_details,  # 리스트
+        "risk_details": risk_details,  # 리스트 형태
         "historical_inference_possible": historical_inference_possible,
-        "historical_inference_details": infer_details_ext,  # 리스트
-        "user_id": user_id,
-        "sns_api": sns_api,
-        "photoName": photoName,
-        "photoUrl": photoUrl,
+        "historical_inference_details": infer_details_ext,  # 리스트 형태
+        "userId": userId,
         "uploadTime": uploadTime,
         "created_at": timezone.now(),
     }
@@ -435,7 +424,7 @@ def analyze_image(request):
     analysis_id = str(result_insert.inserted_id)
 
     result = {
-        "photo_id": photo_id,
+        "photoId": photoId,
         "analysis_id": analysis_id,
         "risk_score": total_risk_score,
         "risk_level": risk_level,
