@@ -1,0 +1,61 @@
+/* Mypage.module.css */
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+  text-align: center;
+  font-family: Arial, sans-serif;
+}
+
+.profileSection {
+  background-color: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.profileSection h2 {
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.profileSection p {
+  color: #666;
+}
+
+.photoSection {
+  text-align: center;
+}
+
+.photoSection h3 {
+  margin-bottom: 15px;
+  color: #444;
+}
+
+.photoGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+  justify-content: center;
+  align-items: center;
+}
+
+.uploadedImage {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  transition: transform 0.2s ease-in-out;
+}
+
+.uploadedImage:hover {
+  transform: scale(1.05);
+}
+
+.errorText {
+  color: red;
+  font-weight: bold;
+  margin-top: 10px;
+}

@@ -11,6 +11,30 @@ export const login = async (data) => {
   return response.data;
 };
 
+// ✅ 사용자 프로필 정보 가져오기
+export const getUserProfile = async () => {
+  const token = getToken();
+  console.log("🔍 저장된 토큰 (사용자 프로필 요청):", token); // ✅ 토큰 확인
+
+  const response = await httpClient.get("/api/profile", {
+    headers: { Authorization: token ? `Bearer ${token}` : "" }, // 🔥 토큰 추가 (null 방지)
+  });
+
+  return response.data;
+};
+
+// ✅ 업로드한 사진 리스트 가져오기
+export const getUserPhotos = async () => {
+  const token = getToken();
+  console.log("📸 저장된 토큰 (사진 요청):", token); // ✅ 토큰 확인
+
+  const response = await httpClient.get("/api/photos", {
+    headers: { Authorization: token ? `Bearer ${token}` : "" }, // 🔥 토큰 추가
+  });
+
+  return response.data.photos;
+};
+
 export const uploadPhoto = async (data) => {
   try {
     const token = getToken();
