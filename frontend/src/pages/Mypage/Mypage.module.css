@@ -4,15 +4,12 @@
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  text-align: center;
-  font-family: Arial, sans-serif;
 }
 
 .profileSection {
   background-color: #f9f9f9;
   padding: 20px;
   border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
 }
 
@@ -58,4 +55,51 @@
   color: red;
   font-weight: bold;
   margin-top: 10px;
+}
+
+/* 비밀번호 변경 섹션 */
+.passwordSection {
+  background-color: #f9f9f9;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+}
+
+.passwordSection h3 {
+  font-size: 18px;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.passwordInput {
+  width: 100%;
+  padding: 10px;
+  margin-bottom: 10px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.updateButton {
+  width: 100%;
+  padding: 10px;
+  background-color: #0F4C2E;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  font-size: 16px;
+  cursor: pointer;
+  transition: 0.2s ease-in-out;
+}
+
+.updateButton:hover {
+  background-color: #0b3a23;
+}
+
+/* 성공 메시지 스타일 */
+.successMessage {
+  color: #28a745;
+  font-size: 14px;
+  margin-top: 5px;
 }

@@ -58,3 +58,17 @@ export const uploadPhoto = async (data) => {
     throw error;
   }
 };
+
+// 비밀번호 변경 API
+export const updateUserPassword = async (newPassword) => {
+  const token = getToken();
+
+  const response = await httpClient.put("/api/profile", 
+    { userPw: newPassword }, // 변경할 비밀번호 전달
+    {
+      headers: { Authorization: `Bearer ${token}` }, // 토큰 추가
+    }
+  );
+
+  return response.data;
+};
