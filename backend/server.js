@@ -4,7 +4,7 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const Analysis = require('./models/analysis'); // Analysis 모델 가져오기
 
-console.log("process.env.MONGO_URI 값 확인:", process.env.MONGO_URI);
+//console.log("process.env.MONGO_URI 값 확인:", process.env.MONGO_URI);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -105,6 +105,10 @@ app.use("/api", questionRouter);
 
 const answerRouter = require("./routes/answer");
 app.use("/api", answerRouter);
+
+//히스토리 라우터
+const historyRouter = require("./routes/history");
+app.use("/api", historyRouter);
 
 // 서버 실행
 app.listen(PORT, () => {
