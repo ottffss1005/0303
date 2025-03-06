@@ -1,25 +1,39 @@
 import React, { useState, useRef } from "react";
+import { useAuth } from "../../hooks/useAuth";
 import styles from "./ImgUpload.module.css";
 import ChatBubble from "./ChatBubble";
 
 const ImgUpload = () => {
+  const { userUploadPhoto } = useAuth();
   const [messages, setMessages] = useState([]);
   const fileInputRef = useRef(null);
 
-  const addImageFile = (event) => {
+  // 사용자가 파일을 선택하면 자동 업로드
+  const handleFileChange = async (event) => {
     const file = event.target.files[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setMessages([
-          ...messages,
-          { type: "image", content: reader.result, sender: "user" },
-        ]);
-      };
-      reader.readAsDataURL(file);
+    if (!file) return;
+
+    // 미리보기 이미지 추가
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { type: "image", content: reader.result, sender: "user" }, // 미리보기 추가
+      ]);
+    };
+    reader.readAsDataURL(file);
+
+    // 서버에 업로드 실행
+    const uploadedUrl = await userUploadPhoto(file);
+    if (uploadedUrl) {
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { type: "image", content: uploadedUrl, sender: "server" }, // 업로드된 이미지 URL 추가
+      ]);
     }
   };
 
+  // 파일 선택 트리거
   const handleUploadClick = () => {
     fileInputRef.current.click();
   };
@@ -48,11 +62,11 @@ const ImgUpload = () => {
           type="file"
           accept="image/*"
           ref={fileInputRef}
-          onChange={addImageFile}
+          onChange={handleFileChange}
           className={styles.hiddenInput}
         />
         <button className={styles.uploadButton} onClick={handleUploadClick}>
-          📁 파일 선택
+          📁 사진 선택
         </button>
       </div>
     </div>

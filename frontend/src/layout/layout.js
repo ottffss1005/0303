@@ -5,7 +5,9 @@ import SideMenu from "../components/Nav";
 const layout = ({ children }) => {
   return (
     <div className={styles.layout}>
-      <header className={styles.header}>헤더 영역</header>
+      <header className={styles.header}>
+        <br />
+      </header>
       <aside className={styles.sidebar}>
         <SideMenu />
       </aside>
