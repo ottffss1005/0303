@@ -1,15 +1,15 @@
 .bubbleContainer {
     display: flex;
-    flex-direction: column; /* 세로 정렬 */
+    flex-direction: column; 
     margin-bottom: 10px;
   }
   
   .user {
-    align-items: flex-end; /* 사용자의 말풍선을 오른쪽 정렬 */
+    align-items: flex-end; 
   }
   
   .bot {
-    align-items: flex-start; /* AI 메시지는 왼쪽 정렬 */
+    align-items: flex-start; 
   }
   
   .botIcon {
@@ -27,7 +27,7 @@
   }
   
   .bubble {
-    max-width: 80%;
+    max-width: 100%;
     padding: 10px;
     border-radius: 10px;
     word-break: break-word;
@@ -35,19 +35,16 @@
     display: inline-block;
   }
   
-  /* 사용자 말풍선 */
   .userBubble {
     background-color: #0F4C2E;
     color: white;
   }
   
-  /* AI 말풍선 */
   .botBubble {
     background-color: #F1F5F2;
     color: black;
   }
   
-  /* 이미지 스타일 */
   .image {
     width: auto;
     max-width: 300px;
@@ -57,7 +54,6 @@
     display: block;
   }
   
-  /* 사용자의 이미지 메시지를 오른쪽 정렬 */
   .user .bubble {
     text-align: right;
   }

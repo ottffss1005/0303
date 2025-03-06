@@ -33,7 +33,7 @@ router.get("/answer", authenticateToken, async (req, res) => {
 
     console.log("analysisData 있음, 200 반환");    // [디버그 로그 8]
     res.status(200).json({
-        photoId: analysisData.photo_id,
+        photoId: analysisData.photoId,
         extractedText: analysisData.extracted_text,
         riskScore: analysisData.risk_score,
         riskLevel: analysisData.risk_level,
