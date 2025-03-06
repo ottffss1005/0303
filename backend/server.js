@@ -8,6 +8,7 @@ console.log("process.env.MONGO_URI 값 확인:", process.env.MONGO_URI);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+const path = require("path");
 
 //미들웨어 설정
 app.use(cors({
