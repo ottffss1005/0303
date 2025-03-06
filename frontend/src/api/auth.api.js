@@ -71,7 +71,7 @@ export const updateUserPassword = async (newPassword) => {
 };
 
 // 사용자가 선택한 질문을 서버로 전송
-export const sendQuestion = async (photoId, questionId, questionText, userId) => {
+export const sendQuestion = async (questionId, questionText, userId) => {
   const token = getToken();
 
   const response = await httpClient.post(
@@ -86,7 +86,7 @@ export const sendQuestion = async (photoId, questionId, questionText, userId) =>
 };
 
 // 서버에서 AI 답변을 받아오기
-export const getAIAnswer = async (imageId, questionId) => {
+export const getAIAnswer = async (photoId, questionId) => {
   const token = getToken();
 
   const response = await httpClient.get("/api/answer", {

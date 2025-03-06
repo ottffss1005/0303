@@ -22,7 +22,7 @@ const UploadImage = ({ onUploadComplete, selectedOption }) => {
 
     await userUploadPhoto(file);
 
-    console.log("📢 업로드 완료!");
+    console.log("업로드 완료!");
     setIsUploaded(true);
     onUploadComplete(true);
   };
@@ -30,9 +30,9 @@ const UploadImage = ({ onUploadComplete, selectedOption }) => {
   useEffect(() => {
     if (selectedOption) {
       const optionsMap = {
-        analyze: "📊 이 사진을 분석하고 싶어요",
-        chooseAnother: "🖼 다른 사진을 고르고 싶어요",
-        cancel: "❌ 취소할래요",
+        analyze: "이 사진을 분석하고 싶어요",
+        chooseAnother: "다른 사진을 고르고 싶어요",
+        cancel: "취소할래요",
       };
 
       const userMessage = { type: "text", content: optionsMap[selectedOption], sender: "user" };
