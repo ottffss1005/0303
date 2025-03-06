@@ -1,13 +1,13 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import styles from "./ImgUpload.module.css";
 import ChatBubble from "./ChatBubble";
-import AIquestion from './AIquestion';
 
-const ImgUpload = ({ onUploadComplete }) => {
+const UploadImage = ({ onUploadComplete, selectedOption }) => {
   const { userUploadPhoto } = useAuth();
-  const [uploadedImage, setUploadedImage] = useState(null);
+  const [messages, setMessages] = useState([]);
   const fileInputRef = useRef(null);
+  const [isUploaded, setIsUploaded] = useState(false);
 
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
@@ -15,21 +15,38 @@ const ImgUpload = ({ onUploadComplete }) => {
 
     const reader = new FileReader();
     reader.onloadend = () => {
-      setUploadedImage(reader.result);
+      const newImage = { type: "image", content: reader.result, sender: "user" };
+      setMessages((prev) => [...prev, newImage]);
     };
     reader.readAsDataURL(file);
 
     await userUploadPhoto(file);
 
-    console.log("📢 업로드 완료!"); // 업로드 성공 로그
-    onUploadComplete(true); // 상태 변경
+    console.log("📢 업로드 완료!");
+    setIsUploaded(true);
+    onUploadComplete(true);
   };
+
+  useEffect(() => {
+    if (selectedOption) {
+      const optionsMap = {
+        analyze: "📊 이 사진을 분석하고 싶어요",
+        chooseAnother: "🖼 다른 사진을 고르고 싶어요",
+        cancel: "❌ 취소할래요",
+      };
+
+      const userMessage = { type: "text", content: optionsMap[selectedOption], sender: "user" };
+      setMessages((prev) => [...prev, userMessage]);
+    }
+  }, [selectedOption]);
 
   return (
     <div className={styles.chatContainer}>
       <div className={styles.chatWindow}>
-        {uploadedImage ? (
-          <ChatBubble message={uploadedImage} sender={"user"} type="image" />
+        {messages.length > 0 ? (
+          messages.map((msg, index) => (
+            <ChatBubble key={index} message={msg.content} sender={msg.sender} type={msg.type} />
+          ))
         ) : (
           <div className={styles.placeholder}>
             SNS에 업로드할 사진을 추가하세요 📷
@@ -45,15 +62,14 @@ const ImgUpload = ({ onUploadComplete }) => {
           onChange={handleFileChange}
           className={styles.hiddenInput}
         />
-        {!uploadedImage && (
+        {messages.length === 0 && (
           <button className={styles.uploadButton} onClick={() => fileInputRef.current.click()}>
             📁 사진 선택
           </button>
         )}
-        {uploadedImage && <AIquestion/>}
       </div>
     </div>
   );
 };
 
-export default ImgUpload;
+export default UploadImage;
