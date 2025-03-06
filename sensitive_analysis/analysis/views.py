@@ -22,7 +22,7 @@ from google.cloud import vision
 from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
 from tensorflow.keras.preprocessing import image as keras_image
 
-# Analysis 모델은 필드명을 참고하기 위한 용도 (MongoDB 저장은 PyMongo 사용)
+# Analysis 모델은 필드명을 참고하기 위한 용도입니다.
 from .models import Analysis
 
 # BASE_DIR: manage.py가 있는 프로젝트 루트
@@ -63,7 +63,7 @@ model = VGG16(weights="imagenet", include_top=False, pooling="avg")
 # MongoDB 연결 함수
 def get_mongo_db():
     client = MongoClient(settings.MONGO_URI)
-    db = client.get_default_database()  # URI에 지정된 DB 사용 ("PROSNS")
+    db = client.get_default_database()  # URI에 지정된 DB ("PROSNS") 사용
     return db
 
 
@@ -207,7 +207,7 @@ def analyze_sensitive_text(text):
             score += 15
             details.append(f"개인정보({kw}) 감지: 노출 위험")
             break
-    # 지역명 감지: regions.json에 있는 각 지역이 한 번이라도 등장하면 위험 점수 +10 (중복 무시)
+    # 지역명 감지: regions.json에 있는 각 지역이 텍스트에 한 번이라도 발견되면 +10점 (중복 무시)
     detected_regions = []
     for region in regions_from_file:
         if region in text and region not in detected_regions:
@@ -271,14 +271,42 @@ def analyze_barcode_qr(content):
     return score, details
 
 
-# 헬퍼 함수 6. 과거 Analysis 내역을 통한 추가 추론 개선
+# 헬퍼 함수 6. 임베딩 기반 추가 추론
+def infer_context_from_embeddings(current_embedding):
+    """
+    현재 이미지의 임베딩과 MongoDB에 저장된 이전 이미지들의 임베딩을 비교하여,
+    코사인 유사도(두 벡터의 내적 값)가 threshold보다 크면, (유사도 - threshold)*50의 위험 점수를 추가합니다.
+    """
+    if current_embedding is None:
+        return 0, []
+    threshold = 0.7  # 유사도 임계값 (필요 시 조정)
+    additional_score = 0
+    additional_details = []
+    db = get_mongo_db()
+    analysis_coll = db["analysis"]
+    similar_similarities = []
+    for doc in analysis_coll.find({"embedding": {"$ne": ""}}):
+        try:
+            stored_embedding = np.array(list(map(float, doc["embedding"].split(","))))
+            similarity = np.dot(
+                current_embedding, stored_embedding
+            )  # 정규화된 임베딩의 내적 = 코사인 유사도
+            if similarity > threshold:
+                points = (similarity - threshold) * 50  # 유사도에 따른 위험 점수 부여
+                additional_score += points
+                similar_similarities.append(round(similarity, 2))
+        except Exception as e:
+            print("Error in embedding comparison:", e)
+            continue
+    if similar_similarities:
+        additional_details.append(
+            f"임베딩 기반 유사 이미지 (유사도: {similar_similarities})로 추가 위험 점수 {round(additional_score,1)}점 부여"
+        )
+    return int(additional_score), additional_details
+
+
+# 기존 텍스트 기반 추가 추론 함수
 def infer_context_from_history_extended(current_visual_details):
-    """
-    현재 이미지의 랜드마크 및 지역명 정보를 바탕으로,
-    이전 Analysis 문서의 risk_details (리스트)에서
-    '랜드마크 감지:'와 '지역명 감지:' 항목을 모두 수집합니다.
-    동일한 장소/지역이 2회 이상 등장하면 추가 위험 점수를 부여합니다.
-    """
     inferred_score = 0
     inferred_details = []
     current_locations = []
@@ -333,21 +361,15 @@ def analyze_image(request):
     if not file_content:
         return JsonResponse({"error": "업로드된 파일이 비어 있습니다."}, status=400)
 
-    # photoId와 userId는 POST 요청에서 "photoId"와 "userId"로 받습니다.
+    # photoId와 userId는 POST 요청에서 "photoId"와 "userId"로 받음
     photoId = request.POST.get("photoId")
     if not photoId:
         photoId = str(uuid.uuid4())[:8]
-
     userId = request.POST.get("userId", "")
 
-    # 이미지 파일을 BASE_DIR/uploaded_images 폴더에 {photoId}.jpg로 저장
-    upload_folder = os.path.join(BASE_DIR, "uploaded_images")
-    if not os.path.exists(upload_folder):
-        os.makedirs(upload_folder)
-    file_path = os.path.join(upload_folder, f"{photoId}.jpg")
-    with open(file_path, "wb") as f:
-        f.write(file_content)
-    photoUrl = f"/uploaded_images/{photoId}.jpg"
+    # 이미지 파일을 BASE_DIR/uploaded_images 폴더에 {photoId}.jpg 로 저장
+    save_uploaded_image(photoId, file_content)
+    photoUrl = f"/uploaded_images/{photoId}.jpg"  # 웹 접근 URL
     photoName = image_file.name  # 사용하지 않음
     uploadTime = timezone.now()
 
@@ -372,11 +394,17 @@ def analyze_image(request):
     if new_embedding is None:
         risk_details.append("이미지 임베딩 추출 실패")
 
-    infer_score_ext, infer_details_ext = infer_context_from_history_extended(
+    text_infer_score, text_infer_details = infer_context_from_history_extended(
         visual_details
     )
-    total_risk_score += infer_score_ext
-    risk_details.extend(infer_details_ext)
+    total_risk_score += text_infer_score
+    risk_details.extend(text_infer_details)
+
+    embed_infer_score, embed_infer_details = infer_context_from_embeddings(
+        new_embedding
+    )
+    total_risk_score += embed_infer_score
+    risk_details.extend(embed_infer_details)
 
     if request.user.is_authenticated:
         registered_phone = getattr(request.user, "phone_number", None)
@@ -391,7 +419,7 @@ def analyze_image(request):
                     "등록된 전화번호 미노출: 가입 시 입력한 전화번호가 이미지에 포함되지 않음"
                 )
 
-    historical_inference_possible = bool(infer_details_ext)
+    historical_inference_possible = bool(text_infer_details or embed_infer_details)
 
     if total_risk_score > 100:
         total_risk_score = 100
@@ -410,9 +438,9 @@ def analyze_image(request):
         "extracted_text": extracted_text,
         "risk_score": total_risk_score,
         "risk_level": risk_level,
-        "risk_details": risk_details,  # 리스트 형태
+        "risk_details": risk_details,
         "historical_inference_possible": historical_inference_possible,
-        "historical_inference_details": infer_details_ext,  # 리스트 형태
+        "historical_inference_details": text_infer_details + embed_infer_details,
         "userId": userId,
         "uploadTime": uploadTime,
         "created_at": timezone.now(),
@@ -432,7 +460,7 @@ def analyze_image(request):
         "extracted_text": extracted_text,
         "historical_inference": {
             "possible": historical_inference_possible,
-            "details": infer_details_ext,
+            "details": text_infer_details + embed_infer_details,
         },
     }
     return JsonResponse(result)
