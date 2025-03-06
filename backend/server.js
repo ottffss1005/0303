@@ -118,5 +118,5 @@ app.listen(PORT, () => {
 
 require('dotenv').config({ path: __dirname + '/.env' });
 
-console.log("현재 작업 디렉토리:", process.cwd());
-console.log("환경 변수 로드 확인:", process.env.MONGO_URI);
+//console.log("현재 작업 디렉토리:", process.cwd());
+//console.log("환경 변수 로드 확인:", process.env.MONGO_URI);
