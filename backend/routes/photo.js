@@ -3,7 +3,7 @@ const express = require("express");
 const router = express.Router();
 const Photo = require("../models/photo");
 const authenticateToken = require("../middleware/authenticateToken");
-const upload = require("../config/multer"); //multer
+const upload = require("../config/multer");
 
 
 //사진 업로드
@@ -42,11 +42,11 @@ router.post("/photos", authenticateToken, upload.single("photo"), async (req, re
 //사용자가 업로드한 사진 리스트 GET
 router.get("/photos", authenticateToken, async (req, res) => {
   try {
-    //JWT 토큰 사용자 받아옴옴
+    //JWT 토큰 사용자 받아옴
     const userId = req.user.userId; 
 
     //DB에서 해당 사용자가 업로드한 사진 모두 조회
-    // 정렬 방식 바꿀 수 있음음
+    // 정렬 방식 바꿀 수 있음
     const photos = await Photo.find({ userId: userId }).sort({ uploadTime: -1 });
 
     res.status(200).json({
