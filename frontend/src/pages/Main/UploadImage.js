@@ -2,37 +2,34 @@ import React, { useState, useRef } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import styles from "./ImgUpload.module.css";
 import ChatBubble from "./ChatBubble";
-import AIquestion from "./AIquestion";
+import AIquestion from './AIquestion';
 
-const ImgUpload = () => {
+const ImgUpload = ({ onUploadComplete }) => {
   const { userUploadPhoto } = useAuth();
   const [uploadedImage, setUploadedImage] = useState(null);
   const fileInputRef = useRef(null);
 
-  // 사용자가 파일을 선택하면 자동 업로드
   const handleFileChange = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
-    // 미리보기 이미지 추가
     const reader = new FileReader();
     reader.onloadend = () => {
-      setUploadedImage({ type: "image", content: reader.result, sender: "user" });
+      setUploadedImage(reader.result);
     };
     reader.readAsDataURL(file);
 
-    // 서버에 업로드 실행
-    const uploadedUrl = await userUploadPhoto(file);
-    if (uploadedUrl) {
-      setUploadedImage({ type: "image", content: uploadedUrl, sender: "server" });
-    }
+    await userUploadPhoto(file);
+
+    console.log("📢 업로드 완료!"); // 업로드 성공 로그
+    onUploadComplete(true); // 상태 변경
   };
 
   return (
     <div className={styles.chatContainer}>
       <div className={styles.chatWindow}>
         {uploadedImage ? (
-          <ChatBubble message={uploadedImage.content} sender={"user"} type={uploadedImage.type} />
+          <ChatBubble message={uploadedImage} sender={"user"} type="image" />
         ) : (
           <div className={styles.placeholder}>
             SNS에 업로드할 사진을 추가하세요 📷
@@ -48,14 +45,12 @@ const ImgUpload = () => {
           onChange={handleFileChange}
           className={styles.hiddenInput}
         />
-        {!uploadedImage && ( // 업로드되면 버튼을 숨김
+        {!uploadedImage && (
           <button className={styles.uploadButton} onClick={() => fileInputRef.current.click()}>
             📁 사진 선택
           </button>
         )}
-        {uploadedImage && (
-                <AIquestion/>
-        )}
+        {uploadedImage && <AIquestion/>}
       </div>
     </div>
   );
