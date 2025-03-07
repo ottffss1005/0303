@@ -122,7 +122,7 @@ export const sendImgId = async (photoId) => {
 // 새로 추가: 분석 요청 API 호출 함수
 export const analyzeImage = async (formData) => {
   const token = getToken();
-  const response = axios.post('http://localhost:8000/api2/analyze/', formData, {
+  const response = axios.post('http://localhost:8000/api/analyze/', formData, {
     headers: {
       "Content-Type": "multipart/form-data",
       Authorization: token ? `Bearer ${token}` : "",
