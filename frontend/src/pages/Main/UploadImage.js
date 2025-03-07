@@ -25,7 +25,6 @@ const UploadImage = ({ onUploadComplete, selectedOption }) => {
 
     console.log("업로드 완료!");
     setIsUploaded(true);
-    // 파일 업로드 완료 시 파일 객체도 함께 전달
     onUploadComplete(true, file);
   };
 

@@ -4,11 +4,9 @@ import { useAuthStore } from "./store/authStore";
 import Layout from "./layout/layout";
 import LayoutWithoutNav from "./layout/LayoutWithoutNav";
 
-import Nav from "./components/Nav";
 import Home from "./pages/Home/Home";
 import Main from "./pages/Main/Main";
 import Mypage from "./pages/Mypage/Mypage";
-import Settings from "./pages/Settings/Settings";
 import Login from "./pages/Login/Login";
 import Register from "./pages/Register/Register";
 

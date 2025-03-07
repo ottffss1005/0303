@@ -10,9 +10,6 @@ const InputBnt = ({ onSelect }) => {
       <div className={styles.option} onClick={() => onSelect("chooseAnother")}>
         🖼 다른 사진을 고르고 싶어요
       </div>
-      <div className={styles.option} onClick={() => onSelect("cancel")}>
-        ❌ 취소할래요
-      </div>
     </div>
   );
 };

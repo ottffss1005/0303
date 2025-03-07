@@ -24,7 +24,7 @@ const HistoryList = ({ onSelectHistory }) => {
       <ul>
         {historyList.map((item) => (
           <li key={item.photoId} onClick={() => onSelectHistory(item)}>
-            {new Date(item.uploadedAt).toLocaleString()} {/* 업로드 시간 */}
+            {new Date(item.uploadedAt).toLocaleString()}
           </li>
         ))}
       </ul>

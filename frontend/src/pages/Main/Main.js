@@ -61,13 +61,7 @@ const Main = () => {
         console.error("분석 요청 실패:", error);
       }
     } else if (option === "chooseAnother" && userId) {
-      const { id, text } = questionMap[option];
-      try {
-        const response = await sendQuestion(id, text, userId);
-        console.log("질문 전송 성공:", response);
-      } catch (error) {
-        console.error("질문 전송 실패:", error);
-      }
+      window.location.reload();
     }
   };
 
@@ -111,7 +105,6 @@ const Main = () => {
               }}
               selectedOption={selectedOption}
             />
-            {/* 분석 결과가 있으면 AI 말풍선으로 보여주고, 아래에 블러 버튼 추가 */}
             {analysisResult && (
               <>
                 <ChatBubble
