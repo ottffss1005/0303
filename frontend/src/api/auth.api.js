@@ -50,7 +50,11 @@ export const uploadPhoto = async (data) => {
     console.log("사진 업로드 성공:", response.data);
     return response.data;
   } catch (error) {
-    console.error("사진 업로드 실패:", error.response?.status, error.response?.data);
+    console.error(
+      "사진 업로드 실패:",
+      error.response?.status,
+      error.response?.data
+    );
     throw error;
   }
 };
@@ -93,6 +97,21 @@ export const getAIAnswer = async (photoId, questionId) => {
     params: { photoId },
     headers: { Authorization: token ? `Bearer ${token}` : "" },
   });
+
+  return response.data;
+};
+
+// sensitive에 photoId 전송
+export const sendImgId = async (photoId) => {
+  const token = getToken();
+
+  const response = await httpClient.post(
+    "/api/analyze",
+    { photoId },
+    {
+      headers: { Authorization: token ? `Bearer ${token}` : "" },
+    }
+  );
 
   return response.data;
 };
