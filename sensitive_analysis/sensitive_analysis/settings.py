@@ -75,6 +75,7 @@ TEMPLATES = [
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
 ]
+CORS_ALLOW_CREDENTIALS = True
 
 WSGI_APPLICATION = 'sensitive_analysis.wsgi.application'
 

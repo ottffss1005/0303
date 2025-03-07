@@ -130,3 +130,18 @@ export const analyzeImage = async (formData) => {
   });
   return response.data;
 };
+
+export const blurImage = async (photoId) => {
+  const token = getToken();
+  const response = await httpClient.post(
+    'http://localhost:8000/api/blur/',
+    { photoId },
+    {
+      withCredentials: true,
+      headers: { Authorization: token ? `Bearer ${token}` : "" },
+      responseType: 'blob'  // blob 형식으로 응답 받기
+    }
+  );
+
+  return response.data;
+};

@@ -22,14 +22,6 @@ function Nav() {
         <img src={mypageIcon} alt="mypage icon" className={styles.nav_icon} />
         내페이지
       </Link>
-      <Link className={styles.nav_text} to={"/Settings"}>
-        <img
-          src={settingsIcon}
-          alt="settings icon"
-          className={styles.nav_icon}
-        />
-        환경설정
-      </Link>
       <button className={styles.Logout_but} onClick={userLogout}>로그아웃</button>
     </div>
   );

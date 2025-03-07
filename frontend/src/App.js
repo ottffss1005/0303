@@ -24,7 +24,6 @@ function App() {
             <Route path="/" element={<Home />} />
             <Route path="/Main" element={<Main />} />
             <Route path="/Mypage" element={<Mypage />} />
-            <Route path="/Settings" element={<Settings />} />
           </Routes>
         </Layout>
       ) : (
