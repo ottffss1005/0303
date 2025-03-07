@@ -7,8 +7,8 @@ div h5 {
   display: flex;
   justify-content: center;
   align-items: center;
-  height: 80vh; /* 뷰포트 전체 높이 */
-  width: 90vw; /* 뷰포트 전체 너비 */
+  height: 80vh;
+  width: 90vw;
 }
 
 .loginForm {
@@ -25,9 +25,8 @@ div h5 {
   box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.1);
 }
 
-
 .login_title {
-  margin-bottom: 50px; /* 로그인 글자와 아래 요소 간격 */
+  margin-bottom: 50px;
 }
 
 .input {
@@ -62,8 +61,8 @@ div h5 {
 }
 
 .link a {
-  text-decoration: none; /* 밑줄 제거 */
-  color: rgb(107, 107, 107); /* 색상 변경 */
+  text-decoration: none;
+  color: rgb(107, 107, 107);
 }
 
 .link a:hover {
