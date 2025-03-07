@@ -1,3 +1,4 @@
+// UploadImage.js
 import React, { useState, useRef, useEffect } from "react";
 import { useAuth } from "../../hooks/useAuth";
 import styles from "./ImgUpload.module.css";
@@ -24,7 +25,8 @@ const UploadImage = ({ onUploadComplete, selectedOption }) => {
 
     console.log("업로드 완료!");
     setIsUploaded(true);
-    onUploadComplete(true);
+    // 파일 업로드 완료 시 파일 객체도 함께 전달
+    onUploadComplete(true, file);
   };
 
   useEffect(() => {

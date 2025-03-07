@@ -1,5 +1,6 @@
 import { httpClient } from "./http";
 import { getToken } from "../store/authStore";
+import axios from 'axios';
 
 // 회원가입
 export const signup = async (userData) => {
@@ -76,7 +77,7 @@ export const sendQuestion = async (questionId, questionText, userId) => {
 
   const response = await httpClient.post(
     "/api/question",
-    { questionId, questionText, userId },
+    { questionText, userId },
     {
       headers: { Authorization: token ? `Bearer ${token}` : "" },
     }
@@ -86,13 +87,27 @@ export const sendQuestion = async (questionId, questionText, userId) => {
 };
 
 // 서버에서 AI 답변을 받아오기
-export const getAIAnswer = async (photoId, questionId) => {
+export const getAIAnswer = async (photoId) => {
   const token = getToken();
+  // 콜론(:) 등 특수문자를 안전하게 변환
+  const encodedPhotoId = encodeURIComponent(photoId);
 
   const response = await httpClient.get("/api/answer", {
-    params: { photoId },
+    params: { photoId: encodedPhotoId },
     headers: { Authorization: token ? `Bearer ${token}` : "" },
   });
 
+  return response.data;
+};
+
+// 새로 추가: 분석 요청 API 호출 함수
+export const analyzeImage = async (formData) => {
+  const token = getToken();
+  const response = axios.post('http://localhost:8000/api2/analyze/', formData, {
+    headers: {
+      "Content-Type": "multipart/form-data",
+      Authorization: token ? `Bearer ${token}` : "",
+    },
+  });
   return response.data;
 };
