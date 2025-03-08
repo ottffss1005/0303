@@ -30,7 +30,15 @@ const Register = () => {
     }
 
     setError("");
-    userSignup(formData);
+
+    // FormData 대신 명확히 JSON 객체로 전달
+    const signupData = {
+      userEmail: formData.userEmail,
+      userId: formData.userId,
+      userPw: formData.userPw,
+    };
+
+    userSignup(signupData);
   };
 
   return (
